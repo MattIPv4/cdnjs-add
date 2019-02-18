@@ -6,7 +6,7 @@ session_regenerate_id();
 
 $baseRoute = (isset($_SERVER['HTTPS']) ? "https" : "http") . "://" . $_SERVER["HTTP_HOST"];
 $route = strtok(trim($_SERVER['REQUEST_URI'], "/"), "?");
-$route1 = explode('/', $route, 2)[0];
+$routes = explode('/', $route . '/'); // append / to ensure final blank string
 $fullRoute = $baseRoute . "/" . $route;
 $clientIp = isset($_SERVER['HTTP_CLIENT_IP']) ? $_SERVER['HTTP_CLIENT_IP'] : isset($_SERVER['HTTP_X_FORWARDED_FOR']) ? $_SERVER['HTTP_X_FORWARDED_FOR'] : $_SERVER['REMOTE_ADDR'];
 
@@ -48,11 +48,16 @@ function isAuthed()
     return isset($_SESSION['GH_oauth2token']) && isset($_SESSION['GH_oauth2user']);
 }
 
-switch ($route1) {
+function jsonify($data)
+{
+    header("Content-type: application/json");
+    echo json_encode($data, JSON_PRETTY_PRINT);
+}
+
+switch ($routes[0]) {
 
     case "auth":
-        $route2 = ($route == $route1 ? "" : explode('/', $route, 3)[1]);
-        switch ($route2) {
+        switch ($routes[1]) {
             case "in":
                 render("github/oauth.php");
                 break;
@@ -66,6 +71,27 @@ switch ($route1) {
 
             default:
                 redirect("/auth/in");
+                break;
+
+        }
+        break;
+
+    case "add":
+        if (!isAuthed()) redirect("/auth/in");
+
+        switch ($routes[1]) {
+            case "git":
+            case "github":
+                if ((count($routes) == 5 || count($routes) == 6) && !empty($routes[2]) && !empty($routes[3])) {
+                    render("add/github/browse.php",
+                        ["repoOwner" => $routes[2], "repoName" => $routes[3], "repoRef" => $routes[4] ?? "master"]);
+                    break;
+                }
+                render("add/github/start.php");
+                break;
+
+            default:
+                redirect("/add/github");
                 break;
 
         }

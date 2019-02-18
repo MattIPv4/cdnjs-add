@@ -14,3 +14,22 @@ function getGHClient()
     $client->authenticate($_SESSION['GH_oauth2token'], "", Github\Client::AUTH_URL_TOKEN);
     return $client;
 }
+
+function getAllGHFiles($client, $repoOwner, $repoName, $ref = "master", $path = "")
+{
+    // Get all files/dirs at this path
+    $resp = $client->api('repo')->contents()->show($repoOwner, $repoName, $path, $ref);
+
+    // Save in key, value format
+    $files = [];
+    foreach ($resp as $item) {
+        if ($item['type'] === "dir") {
+            // If this is a dir, explore it through recursion
+            $item['name']['contents'] = getAllGHFiles($client, $repoOwner, $repoName, $ref, $path . "/" . $item['name']);
+        }
+        $files[$item['name']] = $item;
+    }
+
+    // Done
+    return $files;
+}
